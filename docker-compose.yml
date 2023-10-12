@@ -1,0 +1,54 @@
+version: '3'
+services:
+  content-service:
+    build:
+      context: ./content-service
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3000"
+    depends_on:
+      - content-db
+    environment:
+      DATABASE_URL: sqlite:///content-db/data/content.sqlite
+
+  interaction-service:
+    build:
+      context: ./interaction-service
+      dockerfile: Dockerfile
+    ports:
+      - "3002:3000"
+    depends_on:
+      - interaction-db
+    environment:
+      DATABASE_URL: sqlite:///interaction-db/data/interaction.sqlite
+
+  user-service:
+    build:
+      context: ./user-service
+      dockerfile: Dockerfile
+    ports:
+      - "3003:3000"
+    depends_on:
+      - user-db
+    environment:
+      DATABASE_URL: sqlite:///user-db/data/user.sqlite
+
+  content-db:
+    image: "busybox"
+    volumes:
+      - content-db-data:/data
+
+  interaction-db:
+    image: "busybox"
+    volumes:
+      - interaction-db-data:/data
+
+  user-db:
+    image: "busybox"
+    volumes:
+      - user-db-data:/data
+
+volumes:
+  content-db-data:
+  interaction-db-data:
+  user-db-data:

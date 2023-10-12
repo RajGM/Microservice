@@ -1,0 +1,23 @@
+# Node.js specific
+node_modules/
+npm-debug.log
+
+# Environment configurations
+.env
+
+# Logs
+logs/
+*.log
+
+# Database files (if SQLite or similar is used)
+*.sqlite
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+Thumbs.db
