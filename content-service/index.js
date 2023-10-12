@@ -1,26 +1,60 @@
 const express = require('express');
 const router = express.Router();
-const multer = require('multer'); // for handling file uploads
-const csv = require('csv-parser'); // for parsing CSV data
+const mongoose = require('mongoose');
+const multer = require('multer'); 
+const csv = require('csv-parser');
 const fs = require('fs');
 
-// Mock database methods, replace with real DB methods
+// Initialize MongoDB Connection
+mongoose.connect(process.env.DATABASE_URL, { 
+    useNewUrlParser: true, 
+    useUnifiedTopology: true 
+}).then(() => {
+    console.log('Connected to Content Service DB');
+}).catch(err => {
+    console.error('Failed to connect to MongoDB', err);
+});
+
+// Define MongoDB Schema and Model for Content
+const contentSchema = new mongoose.Schema({
+    title: String,
+    description: String,
+    date: Date,
+    interactions: Number
+});
+
+const Content = mongoose.model('Content', contentSchema);
+
+// Replace mock db methods with MongoDB Operations
 const db = {
-    save: (data) => {/* implementation */},
-    findAll: () => {/* implementation */},
-    findById: (id) => {/* implementation */},
-    updateById: (id, data) => {/* implementation */},
-    deleteById: (id) => {/* implementation */},
-    findNew: () => {/* implementation */},
-    findTop: () => {/* implementation */}
+    save: async (data) => {
+        return await Content.create(data);
+    },
+    findAll: async () => {
+        return await Content.find();
+    },
+    findById: async (id) => {
+        return await Content.findById(id);
+    },
+    updateById: async (id, data) => {
+        return await Content.findByIdAndUpdate(id, data, { new: true });
+    },
+    deleteById: async (id) => {
+        return await Content.findByIdAndDelete(id);
+    },
+    findNew: async () => {
+        return await Content.find().sort({ date: -1 });
+    },
+    findTop: async () => {
+        return await Content.find().sort({ interactions: -1 }).limit(10);
+    }
 };
 
 // Middleware for CSV upload
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
-// Endpoint to ingest data from CSV
-router.post('/upload', upload.single('file'), (req, res) => {
+router.post('/upload', upload.single('file'), async (req, res) => {
     const results = [];
     const stream = require('stream');
     const bufferStream = new stream.PassThrough();
@@ -28,68 +62,89 @@ router.post('/upload', upload.single('file'), (req, res) => {
 
     bufferStream.pipe(csv())
         .on('data', (data) => results.push(data))
-        .on('end', () => {
-            // Save to database
-            db.save(results);
-            res.status(200).json({ message: 'Data ingested successfully', data: results });
+        .on('end', async () => {
+            try {
+                await db.save(results);
+                res.status(200).json({ message: 'Data ingested successfully', data: results });
+            } catch (error) {
+                res.status(500).json({ message: 'Error saving data', error });
+            }
         });
 });
 
-// CRUD Endpoints
-
-// Fetch all content
-router.get('/', (req, res) => {
-    const contents = db.findAll();
-    res.json(contents);
-});
-
-// Add new content
-router.post('/', (req, res) => {
-    const data = req.body;
-    db.save(data);
-    res.status(201).json({ message: 'Content added', data });
-});
-
-// Fetch content by ID
-router.get('/:id', (req, res) => {
-    const content = db.findById(req.params.id);
-    if (content) {
-        res.json(content);
-    } else {
-        res.status(404).json({ message: 'Not Found' });
+router.get('/', async (req, res) => {
+    try {
+        const contents = await db.findAll();
+        res.json(contents);
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching data', error });
     }
 });
 
-// Update content by ID
-router.put('/:id', (req, res) => {
-    const updated = db.updateById(req.params.id, req.body);
-    if (updated) {
-        res.json({ message: 'Content updated', data: updated });
-    } else {
-        res.status(404).json({ message: 'Not Found' });
+router.post('/', async (req, res) => {
+    try {
+        const data = await db.save(req.body);
+        res.status(201).json({ message: 'Content added', data });
+    } catch (error) {
+        res.status(500).json({ message: 'Error saving content', error });
     }
 });
 
-// Delete content by ID
-router.delete('/:id', (req, res) => {
-    const deleted = db.deleteById(req.params.id);
-    if (deleted) {
-        res.json({ message: 'Content deleted' });
-    } else {
-        res.status(404).json({ message: 'Not Found' });
+router.get('/:id', async (req, res) => {
+    try {
+        const content = await db.findById(req.params.id);
+        if (content) {
+            res.json(content);
+        } else {
+            res.status(404).json({ message: 'Not Found' });
+        }
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching content', error });
     }
 });
 
-// Fetch new content (sorted by date)
-router.get('/new', (req, res) => {
-    const contents = db.findNew();
-    res.json(contents);
+router.put('/:id', async (req, res) => {
+    try {
+        const updated = await db.updateById(req.params.id, req.body);
+        if (updated) {
+            res.json({ message: 'Content updated', data: updated });
+        } else {
+            res.status(404).json({ message: 'Not Found' });
+        }
+    } catch (error) {
+        res.status(500).json({ message: 'Error updating content', error });
+    }
 });
 
-// Fetch top content based on user interactions
-router.get('/top', (req, res) => {
-    const contents = db.findTop();
-    res.json(contents);
+router.delete('/:id', async (req, res) => {
+    try {
+        const deleted = await db.deleteById(req.params.id);
+        if (deleted) {
+            res.json({ message: 'Content deleted' });
+        } else {
+            res.status(404).json({ message: 'Not Found' });
+        }
+    } catch (error) {
+        res.status(500).json({ message: 'Error deleting content', error });
+    }
+});
+
+router.get('/new', async (req, res) => {
+    try {
+        const contents = await db.findNew();
+        res.json(contents);
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching new content', error });
+    }
+});
+
+router.get('/top', async (req, res) => {
+    try {
+        const contents = await db.findTop();
+        res.json(contents);
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching top content', error });
+    }
 });
 
 module.exports = router;

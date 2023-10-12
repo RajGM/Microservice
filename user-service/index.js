@@ -4,10 +4,14 @@ const userRoutes = require('./routes/userRoutes');
 const errorHandlerMiddleware = require('./middleware/errorHandler');
 
 const app = express();
-const PORT = process.env.PORT || 3002;
+
+const {
+    PORT = 3002,
+    DATABASE_URL
+} = process.env;
 
 // Database connection
-mongoose.connect('mongodb://mongo:27017/userServiceDB', { 
+mongoose.connect(DATABASE_URL, { 
     useNewUrlParser: true, 
     useUnifiedTopology: true 
 }).then(() => {

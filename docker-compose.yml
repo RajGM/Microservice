@@ -1,5 +1,15 @@
 version: '3'
 services:
+  mongo-db:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+    volumes:
+      - mongo-db-data:/data/db
+  
   content-service:
     build:
       context: ./content-service
@@ -7,9 +17,9 @@ services:
     ports:
       - "3001:3000"
     depends_on:
-      - content-db
+      - mongo-db
     environment:
-      DATABASE_URL: sqlite:///content-db/data/content.sqlite
+      DATABASE_URL: mongodb://root:example@mongo-db:27017/contentServiceDB?authSource=admin
 
   interaction-service:
     build:
@@ -18,9 +28,9 @@ services:
     ports:
       - "3002:3000"
     depends_on:
-      - interaction-db
+      - mongo-db
     environment:
-      DATABASE_URL: sqlite:///interaction-db/data/interaction.sqlite
+      DATABASE_URL: mongodb://root:example@mongo-db:27017/interactionServiceDB?authSource=admin
 
   user-service:
     build:
@@ -29,26 +39,9 @@ services:
     ports:
       - "3003:3000"
     depends_on:
-      - user-db
+      - mongo-db
     environment:
-      DATABASE_URL: sqlite:///user-db/data/user.sqlite
-
-  content-db:
-    image: "busybox"
-    volumes:
-      - content-db-data:/data
-
-  interaction-db:
-    image: "busybox"
-    volumes:
-      - interaction-db-data:/data
-
-  user-db:
-    image: "busybox"
-    volumes:
-      - user-db-data:/data
+      DATABASE_URL: mongodb://root:example@mongo-db:27017/userServiceDB?authSource=admin
 
 volumes:
-  content-db-data:
-  interaction-db-data:
-  user-db-data:
+  mongo-db-data:
